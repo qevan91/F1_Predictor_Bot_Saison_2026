@@ -1,0 +1,29 @@
+# Virtual Environment
+venv/
+env/
+.venv/
+
+# Configuration Files
+.env
+
+# Data Files
+data/
+data/*.json
+
+# Cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.iml
+.history/
+
+# Operating system
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
