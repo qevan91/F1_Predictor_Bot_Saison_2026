@@ -1,7 +1,7 @@
 import os
-from typing import Literal
+from typing import Literal, Optional
 
-# Third-party library modules
+# Library modules
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -25,15 +25,17 @@ ADMIN_ROLE3 = os.getenv('ADMIN_ROLE3')
 ADMIN_ROLES = [ADMIN_ROLE1, ADMIN_ROLE2, ADMIN_ROLE3]
 
 PiloteF1 = Literal[
-    "Verstappen", "Lawson", "Hamilton", "Leclerc", "Norris", "Piastri",
-    "Russell", "Antonelli", "Alonso", "Stroll", "Sainz", "Albon",
-    "Gasly", "Doohan", "Ocon", "Bearman", "Hülkenberg", "Bortoleto",
-    "Tsunoda", "Hadjar"
+    "Albon", "Alonso", "Antonelli", "Bearman", "Bortoleto",
+    "Bottas", "Colapinto", "Gasly", "Hadjar", "Hamilton",
+    "Hülkenberg", "Lawson", "Leclerc", "Lindblad", "Norris",
+    "Ocon", "Pérez", "Piastri", "Russell", "Sainz",
+    "Stroll", "Verstappen"
 ]
 
 EcurieF1 = Literal[
-    "Red Bull", "Ferrari", "McLaren", "Mercedes", "Aston Martin",
-    "Williams", "Alpine", "Haas", "Audi", "RB"
+    "Alpine", "Aston Martin", "Audi", "Cadillac", "Ferrari",
+    "Haas", "McLaren", "Mercedes", "Racing Bulls", "Red Bull",
+    "Williams"
 ]
 
 
@@ -81,24 +83,24 @@ async def prochain_gp(interaction: discord.Interaction):
     description="Fais tes prédictions pour le prochain Grand Prix !"
 )
 @app_commands.describe(
-    q1="1er en Qualifications", q2="2ème", q3="3ème",
-    r1="Gagnant Course", r2="2ème", r3="3ème", r4="4ème", r5="5ème",
-    r6="6ème", r7="7ème", r8="8ème", r9="9ème", r10="10ème",
-    meilleure_equipe="Équipe marquant le plus de points",
+    qualif1="1er en Qualifications", qualif2="2ème", qualif3="3ème",
+    p1="Gagnant Course", p2="2ème", p3="3ème", p4="4ème", p5="5ème",
+    p6="6ème", p7="7ème", p8="8ème", p9="9ème", p10="10ème",
+    meilleure_ecurie="Équipe marquant le plus de points",
     voiture_de_securite="Voiture de sécurité (Safety Car) ?",
     nombre_abandons="Combien de voitures vont abandonner ?",
     noms_abandons="Pilotes qui abandonnent (séparés par une virgule)",
     pilote_du_jour="Élu pilote du jour",
-    plus_de_depassements="Pilote avec le plus de dépassements"
+    pilote_plus_depassements="Pilote avec le plus de dépassements"
 )
 async def prono(
                 interaction: discord.Interaction,
-                q1: PiloteF1, q2: PiloteF1, q3: PiloteF1,
-                r1: PiloteF1, r2: PiloteF1, r3: PiloteF1, r4: PiloteF1, r5: PiloteF1,
-                r6: PiloteF1, r7: PiloteF1, r8: PiloteF1, r9: PiloteF1, r10: PiloteF1,
-                meilleure_equipe: EcurieF1, voiture_de_securite: bool,
+                qualif1: PiloteF1, qualif2: PiloteF1, qualif3: PiloteF1,
+                p1: PiloteF1, p2: PiloteF1, p3: PiloteF1, p4: PiloteF1, p5: PiloteF1,
+                p6: PiloteF1, p7: PiloteF1, p8: PiloteF1, p9: PiloteF1, p10: PiloteF1,
+                meilleure_ecurie: EcurieF1, voiture_de_securite: bool,
                 nombre_abandons: int, noms_abandons: str,
-                pilote_du_jour: PiloteF1, plus_de_depassements: PiloteF1
+                pilote_du_jour: PiloteF1, pilote_plus_depassements: PiloteF1
                 ):
     # Saves a user's predictions
     user_id = str(interaction.user.id)
@@ -110,14 +112,14 @@ async def prono(
 
     predictions[user_id] = {
         "username": interaction.user.name,
-        "q_top3": [q1, q2, q3],
-        "r_top10": [r1, r2, r3, r4, r5, r6, r7, r8, r9, r10],
-        "ecurie": meilleure_equipe,
-        "sc": voiture_de_securite,
-        "dnf_count": nombre_abandons,
-        "dnf_names": noms_abandons_formates,
-        "dotd": pilote_du_jour,
-        "overtakes": plus_de_depassements
+        "qualif_top3": [qualif1, qualif2, qualif3],
+        "p_top10": [p1, p2, p3, p4, p5, p6, p7, p8, p9, p10],
+        "best_ecurie": meilleure_ecurie,
+        "safety_car": voiture_de_securite,
+        "dnf_nombre": nombre_abandons,
+        "dnf_pilotes": noms_abandons_formates,
+        "pilote_du_jour": pilote_du_jour,
+        "pilotes_+_depassement": pilote_plus_depassements
     }
 
     data_manager.save_data(predictions, data_manager.DATA_FILE)
@@ -211,9 +213,9 @@ async def auto_resultats(
     description="[ADMIN] Valide les résultats à la main."
 )
 @app_commands.describe(
-    q1="1er Qualif", q2="2ème Qualif", q3="3ème Qualif",
-    r1="P1 Course", r2="P2", r3="P3", r4="P4", r5="P5",
-    r6="P6", r7="P7", r8="8ème", r9="9ème", r10="10ème",
+    qualif1="1er Qualif", qualif2="2ème Qualif", qualif3="3ème Qualif",
+    p1="P1 Course", p2="P2", p3="P3", p4="P4", p5="P5",
+    p6="P6", p7="P7", p8="8ème", p9="9ème", p10="10ème",
     ecurie_reelle="Équipe avec le plus de points",
     sc_reelle="Voiture de sécurité ? (Vrai/Faux)",
     nombre_abandons="Nombre total d'abandons",
@@ -224,9 +226,9 @@ async def auto_resultats(
 @app_commands.checks.has_any_role(*ADMIN_ROLES)
 async def resultats_manuels(
         interaction: discord.Interaction,
-        q1: PiloteF1, q2: PiloteF1, q3: PiloteF1,
-        r1: PiloteF1, r2: PiloteF1, r3: PiloteF1, r4: PiloteF1, r5: PiloteF1,
-        r6: PiloteF1, r7: PiloteF1, r8: PiloteF1, r9: PiloteF1, r10: PiloteF1,
+        qualif1: PiloteF1, qualif2: PiloteF1, qualif3: PiloteF1,
+        p1: PiloteF1, p2: PiloteF1, p3: PiloteF1, p4: PiloteF1, p5: PiloteF1,
+        p6: PiloteF1, p7: PiloteF1, p8: PiloteF1, p9: PiloteF1, p10: PiloteF1,
         ecurie_reelle: EcurieF1, sc_reelle: bool,
         nombre_abandons: int, noms_abandons: str,
         dotd_reel: PiloteF1, overtakes_reel: PiloteF1
@@ -242,8 +244,8 @@ async def resultats_manuels(
             "⚠️ Impossible de calculer : aucun pronostic en cours."
         )
 
-    resultats_q3 = [q1, q2, q3]
-    resultats_r10 = [r1, r2, r3, r4, r5, r6, r7, r8, r9, r10]
+    resultats_q3 = [qualif1, qualif2, qualif3]
+    resultats_r10 = [p1, p2, p3, p4, p5, p6, p7, p8, p9, p10]
     noms_abandons_formates = [
         nom.strip().capitalize() for nom in noms_abandons.split(',')
     ] if noms_abandons else []
@@ -328,7 +330,7 @@ def calculate_points(
         points_gagnes = 0
 
         # Qualification points
-        for index, pilote in enumerate(prediction['q_top3']):
+        for index, pilote in enumerate(prediction['qualif_top3']):
             if index < len(resultats_q3) and pilote == resultats_q3[index]:
                 points_gagnes += (5 + (3 - index))
             elif pilote in resultats_q3:
@@ -344,20 +346,20 @@ def calculate_points(
         # Team, SC, and Number of DNFs points
         if prediction.get('ecurie') == resultat_ecurie:
             points_gagnes += 5
-        if prediction['sc'] == resultat_sc:
+        if prediction['safety_car'] == resultat_sc:
             points_gagnes += 2
-        if prediction['dnf_count'] == nombre_abandons:
+        if prediction['dnf_nombre'] == nombre_abandons:
             points_gagnes += 3
 
         # DNF Names points
-        for pilote_abandon in prediction['dnf_names']:
+        for pilote_abandon in prediction['dnf_pilotes']:
             if pilote_abandon in noms_abandons:
                 points_gagnes += 2
 
         # Special bonus points
-        if prediction['dotd'] == resultat_dotd:
+        if prediction['pilote_du_jour'] == resultat_dotd:
             points_gagnes += 5
-        if prediction['overtakes'] == resultat_overtakes:
+        if prediction['pilotes_+_depassement'] == resultat_overtakes:
             points_gagnes += 5
 
         # Save points
