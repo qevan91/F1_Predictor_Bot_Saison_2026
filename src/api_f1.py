@@ -31,8 +31,8 @@ def fetch_last_race_data():
     """Retrieves the results and DNFs of the last race.
 
     Returns:
-        tuple: (top_10_course, dnf_count, dnf_names) or
-               (None, None, None) if an error occurs.
+        tuple: (top_10_course, dnf_count, dnf_names, fastest_lap_driver) or
+               (None, None, None, None) if an error occurs.
     """
     try:
         response = requests.get(f"{API_BASE}/last/results.json")
@@ -43,6 +43,15 @@ def fetch_last_race_data():
             driver['Driver']['familyName'].capitalize() for driver in data[:10]
         ]
 
+        fastest_lap_driver = None
+        for driver_result in data:
+            # Check for keys before granting access
+            fastest_data = driver_result.get('FastestLap', {})
+            if fastest_data.get('rank') == "1":
+                fastest_lap_driver = driver_result['Driver']['familyName']
+                fastest_lap_driver = fastest_lap_driver.capitalize()
+                break
+
         # Retrieves drivers who did not finish the race
         dnf_names = [
             driver['Driver']['familyName'].capitalize()
@@ -51,12 +60,11 @@ def fetch_last_race_data():
                and not driver['status'].startswith('+')
         ]
 
-        return top_10_course, len(dnf_names), dnf_names
+        return top_10_course, len(dnf_names), dnf_names, fastest_lap_driver
 
     except requests.RequestException as error:
         print(f"Erreur API Race: {error}")
-        return None, None, None
-
+        return None, None, None, None
 
 def fetch_last_quali_data():
     """Retrieves the Top 3 of the last qualifications.

@@ -1,5 +1,5 @@
 import os
-from typing import Literal, Optional
+from typing import Literal
 
 # Library modules
 import discord
@@ -87,6 +87,7 @@ async def prochain_gp(interaction: discord.Interaction):
     p1="Gagnant Course", p2="2ème", p3="3ème", p4="4ème", p5="5ème",
     p6="6ème", p7="7ème", p8="8ème", p9="9ème", p10="10ème",
     meilleure_ecurie="Équipe marquant le plus de points",
+    meilleur_tour="Qui fera le meilleur tour en course ?", # [AJOUT MEILLEUR TOUR]
     voiture_de_securite="Voiture de sécurité (Safety Car) ?",
     nombre_abandons="Combien de voitures vont abandonner ?",
     noms_abandons="Pilotes qui abandonnent (séparés par une virgule)",
@@ -98,7 +99,7 @@ async def prono(
                 qualif1: PiloteF1, qualif2: PiloteF1, qualif3: PiloteF1,
                 p1: PiloteF1, p2: PiloteF1, p3: PiloteF1, p4: PiloteF1, p5: PiloteF1,
                 p6: PiloteF1, p7: PiloteF1, p8: PiloteF1, p9: PiloteF1, p10: PiloteF1,
-                meilleure_ecurie: EcurieF1, voiture_de_securite: bool,
+                meilleure_ecurie: EcurieF1, meilleur_tour: PiloteF1, voiture_de_securite: bool,
                 nombre_abandons: int, noms_abandons: str,
                 pilote_du_jour: PiloteF1, pilote_plus_depassements: PiloteF1
                 ):
@@ -115,6 +116,7 @@ async def prono(
         "qualif_top3": [qualif1, qualif2, qualif3],
         "p_top10": [p1, p2, p3, p4, p5, p6, p7, p8, p9, p10],
         "best_ecurie": meilleure_ecurie,
+        "fastest_lap": meilleur_tour,
         "safety_car": voiture_de_securite,
         "dnf_nombre": nombre_abandons,
         "dnf_pilotes": noms_abandons_formates,
@@ -189,7 +191,7 @@ async def auto_resultats(
     await interaction.response.defer()
 
     resultats_q3 = api_f1.fetch_last_quali_data()
-    resultats_r10, nombre_abandons_reel, abandons = api_f1.fetch_last_race_data()
+    resultats_r10, nombre_abandons_reel, abandons, mt_reel = api_f1.fetch_last_race_data()
 
     if resultats_q3 is None or resultats_r10 is None:
         return await interaction.followup.send(
@@ -201,7 +203,7 @@ async def auto_resultats(
 
     rapport, _ = calculate_points(
         predictions, scores, resultats_q3, resultats_r10, ecurie_reelle,
-        sc_reelle, nombre_abandons_reel, abandons, dotd_reel, overtakes_reel
+        mt_reel, sc_reelle, nombre_abandons_reel, abandons, dotd_reel, overtakes_reel
     )
 
     data_manager.save_data(scores, data_manager.SCORES_FILE)
@@ -217,6 +219,7 @@ async def auto_resultats(
     p1="P1 Course", p2="P2", p3="P3", p4="P4", p5="P5",
     p6="P6", p7="P7", p8="8ème", p9="9ème", p10="10ème",
     ecurie_reelle="Équipe avec le plus de points",
+    meilleur_tour_reel="Pilote ayant fait le meilleur tour",
     sc_reelle="Voiture de sécurité ? (Vrai/Faux)",
     nombre_abandons="Nombre total d'abandons",
     noms_abandons="Noms des abandons (sépare par une virgule)",
@@ -229,7 +232,7 @@ async def resultats_manuels(
         qualif1: PiloteF1, qualif2: PiloteF1, qualif3: PiloteF1,
         p1: PiloteF1, p2: PiloteF1, p3: PiloteF1, p4: PiloteF1, p5: PiloteF1,
         p6: PiloteF1, p7: PiloteF1, p8: PiloteF1, p9: PiloteF1, p10: PiloteF1,
-        ecurie_reelle: EcurieF1, sc_reelle: bool,
+        ecurie_reelle: EcurieF1, meilleur_tour_reel: PiloteF1, sc_reelle: bool,
         nombre_abandons: int, noms_abandons: str,
         dotd_reel: PiloteF1, overtakes_reel: PiloteF1
 ):
@@ -252,8 +255,7 @@ async def resultats_manuels(
 
     rapport, _ = calculate_points(
         predictions, scores, resultats_q3, resultats_r10, ecurie_reelle,
-        sc_reelle, nombre_abandons, noms_abandons_formates, dotd_reel,
-        overtakes_reel
+        meilleur_tour_reel, sc_reelle, nombre_abandons, noms_abandons_formates, dotd_reel, overtakes_reel
     )
 
     data_manager.save_data(scores, data_manager.SCORES_FILE)
@@ -304,7 +306,7 @@ async def reset_pronos(interaction: discord.Interaction):
 
 def calculate_points(
         predictions, scores, resultats_q3, resultats_r10, resultat_ecurie,
-        resultat_sc, nombre_abandons, noms_abandons, resultat_dotd, resultat_overtakes
+        resultat_mt, resultat_sc, nombre_abandons, noms_abandons, resultat_dotd, resultat_overtakes
 ):
     """Compares predictions to results and awards points.
 
@@ -314,6 +316,7 @@ def calculate_points(
         resultats_q3 (list): Official Top 3 of the qualifications.
         resultats_r10 (list): Official Top 10 of the race.
         resultat_ecurie (str): Team that scored the most points.
+        resultat_mt (str): Driver who set the fastest lap. # [CORRECTION DOCSTRING] Paramètre ajouté
         resultat_sc (bool): True if a Safety Car was deployed.
         nombre_abandons (int): Official number of DNFs.
         noms_abandons (list): Official names of drivers who DNF'd.
@@ -337,16 +340,19 @@ def calculate_points(
                 points_gagnes += 2
 
         # Race points
-        for index, pilote in enumerate(prediction['r_top10']):
+        for index, pilote in enumerate(prediction['p_top10']):
             if index < len(resultats_r10) and pilote == resultats_r10[index]:
                 points_gagnes += (5 + (10 - index))
             elif pilote in resultats_r10:
                 points_gagnes += 2
 
         # Team, SC, and Number of DNFs points
-        if prediction.get('ecurie') == resultat_ecurie:
+        if prediction.get('best_ecurie') == resultat_ecurie:
             points_gagnes += 5
-        if prediction['safety_car'] == resultat_sc:
+        if prediction.get('fastest_lap') == resultat_mt:
+            points_gagnes += 2
+        # [AJOUT LOGIQUE] Utilisation du paramètre resultat_sc
+        if prediction.get('safety_car') == resultat_sc:
             points_gagnes += 2
         if prediction['dnf_nombre'] == nombre_abandons:
             points_gagnes += 3
